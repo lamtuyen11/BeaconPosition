@@ -13,12 +13,14 @@ class BeaconReferenceApplication: Application() {
     // the region definition is a wildcard that matches all beacons regardless of identifiers.
     // if you only want to detect beacons with a specific UUID, change the id1 paremeter to
     // a UUID like Identifier.parse("2F234454-CF6D-4A0F-ADF2-F4911BA9FFA6")
+    private val beacon1UUID = Identifier.parse("00000000-0000-0000-0000-0053534F4D53")
     var region = Region("all-beacons", null, null, null)
 
     override fun onCreate() {
         super.onCreate()
 
         val beaconManager = BeaconManager.getInstanceForApplication(this)
+
         BeaconManager.setDebug(true)
 
         // By default the AndroidBeaconLibrary will only find AltBeacons.  If you wish to make it
@@ -135,10 +137,12 @@ class BeaconReferenceApplication: Application() {
             sendNotification()
         }
     }
+    val uniqueBeacons = mutableSetOf<Int>()
 
     val centralRangingObserver = Observer<Collection<Beacon>> { beacons ->
         val rangeAgeMillis = System.currentTimeMillis() - (beacons.firstOrNull()?.lastCycleDetectionTimestamp ?: 0)
-        if (rangeAgeMillis < 10000) {
+
+        if (rangeAgeMillis < 30000) {
             Log.d(MainActivity.TAG, "Ranged: ${beacons.count()} beacons")
             for (beacon: Beacon in beacons) {
                 Log.d(TAG, "$beacon about ${beacon.distance} meters away")
@@ -147,6 +151,13 @@ class BeaconReferenceApplication: Application() {
         else {
             Log.d(MainActivity.TAG, "Ignoring stale ranged beacons from $rangeAgeMillis millis ago")
         }
+        for (beacon in beacons) {
+            if (uniqueBeacons.add(beacon.id3.toInt())) {
+                // Only adds if the minor is not already in the set
+                println("New beacon detected with minor: ${beacon.id3}")
+            }
+        }
+        println("Number of unique beacons: ${uniqueBeacons.size}")
     }
 
     private fun sendNotification() {
